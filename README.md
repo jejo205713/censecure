@@ -23,4 +23,11 @@ This is the **base code** of the CenSecure project, and we're actively working o
 2.Installing dependencies & running :
    ```bash
    cd CenSecure && sudo sh install.sh
+   ```
+#CREDITS:
+TEAM DEDSEC :
+```
+JEJO J
+PRIYADHARSHAN V
+PADMESH PS
 ```
