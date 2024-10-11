@@ -19,4 +19,8 @@ This is the **base code** of the CenSecure project, and we're actively working o
 1. Clone the repository:
    ```bash
    git clone https://github.com/yourusername/CenSecure.git
-   cd CenSecure
+   ```
+2.Installing dependencies & running :
+   ```bash
+   cd CenSecure && sudo sh install.sh
+```
