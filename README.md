@@ -24,8 +24,8 @@ This is the **base code** of the CenSecure project, and we're actively working o
    ```bash
    cd CenSecure && sudo sh install.sh
    ```
-#CREDITS:
-TEAM DEDSEC :
+## CREDITS:
+# TEAM "DEDSEC"
 ```
 JEJO J
 PRIYADHARSHAN V
