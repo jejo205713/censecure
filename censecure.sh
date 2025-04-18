@@ -1,49 +1,51 @@
 #!/bin/bash
 
-# CenSecure - A simple IoT Security Monitoring Script for Raspberry Pi or any Linux IoT system
+# CenSecure - A simple IoT Security Monitoring Script for Raspberry Pi
 
-# === CONFIGURATION ===
+# Automatically detect the active network interface
+NETWORK_INTERFACE=$(ip route get 1.1.1.1 | awk '{print $5; exit}')
+echo "🧠 Using network interface: $NETWORK_INTERFACE"
 
-# Auto-detect network interface (fallback to wlp3s0 if unknown)
-NETWORK_INTERFACE=$(ip -o link show | awk -F': ' '{print $2}' | grep -E 'wl|en' | head -n 1)
-NETWORK_INTERFACE=${NETWORK_INTERFACE:-wlp3s0}
-
-# Log file paths
+# Paths and variables
 LOG_FILE="/var/log/censecure_network.log"
 PORT_LOG="/var/log/censecure_ports.log"
 ALERT_EMAIL="admin@example.com"
-DASHBOARD_APP_PATH="/home/pi/censecure/dashboard/app.py"  # Modify if your path is different
+DASHBOARD_APP_PATH="$HOME/censecure/dashboard/app.py"
 
-# === FUNCTIONS ===
-
+# Function to monitor network traffic and save it to a log file
 monitor_traffic() {
     echo "🔍 Monitoring network traffic on $NETWORK_INTERFACE..."
 
-    # Ensure log file exists and has correct permissions
+    # Ensure log file exists with correct permissions
     sudo touch "$LOG_FILE"
+    sudo chown "$USER":"$USER" "$LOG_FILE"
     sudo chmod 644 "$LOG_FILE"
 
+    # Start tcpdump
     sudo tcpdump -i "$NETWORK_INTERFACE" -n -w "$LOG_FILE" &
     TCPDUMP_PID=$!
 }
 
+# Function to check for open ports (potential vulnerabilities)
 check_open_ports() {
     echo "🔓 Scanning for open ports..."
     sudo nmap -sS -O 127.0.0.1 > "$PORT_LOG"
 }
 
+# Function to analyze logs for potential security threats
 analyze_logs() {
     echo "🧠 Analyzing logs for suspicious activity..."
 
     if grep -q "Failed password" /var/log/auth.log; then
-        echo "🚨 SSH intrusion detected!" | mail -s "CenSecure Alert: SSH Intrusion" $ALERT_EMAIL
+        echo "Potential intrusion detected in SSH logs!" | mail -s "Security Alert: SSH Intrusion Detected" $ALERT_EMAIL
     fi
 
     if grep -q "SuspiciousPattern" "$LOG_FILE"; then
-        echo "🚨 Suspicious network activity!" | mail -s "CenSecure Alert: Network Traffic" $ALERT_EMAIL
+        echo "Suspicious network traffic detected!" | mail -s "Security Alert: Network Traffic" $ALERT_EMAIL
     fi
 }
 
+# Function to enable a firewall and block unauthorized access
 enable_firewall() {
     echo "🛡 Configuring firewall settings..."
 
@@ -54,58 +56,51 @@ enable_firewall() {
     sudo ufw --force enable
 }
 
+# Function to notify the user about system events
 notify_user() {
     MESSAGE=$1
     echo "$MESSAGE"
-
     if command -v notify-send &> /dev/null && command -v dbus-launch &> /dev/null; then
-        DISPLAY=:0 dbus-launch notify-send "CenSecure Alert" "$MESSAGE"
+        notify-send "CenSecure Alert" "$MESSAGE"
     else
         echo "⚠️ Notification skipped (notify-send or dbus-launch not available)"
     fi
 }
 
+# Function to start Flask dashboard
 start_dashboard() {
     echo "🚀 Starting CenSecure Flask Dashboard..."
-
-    if [[ -f "$DASHBOARD_APP_PATH" ]]; then
-        nohup python3 "$DASHBOARD_APP_PATH" > /dev/null 2>&1 &
-        DASHBOARD_PID=$!
+    if [ -f "$DASHBOARD_APP_PATH" ]; then
+        (cd "$(dirname "$DASHBOARD_APP_PATH")" && nohup python3 "$(basename "$DASHBOARD_APP_PATH")" > dashboard.log 2>&1 &)
     else
         echo "⚠️ Dashboard app.py not found at $DASHBOARD_APP_PATH"
     fi
 }
 
-stop_all() {
-    echo "🛑 Shutting down CenSecure..."
-
+# Function to stop monitoring
+stop_monitoring() {
     if [[ -n "$TCPDUMP_PID" ]]; then
-        echo "Stopping tcpdump..."
+        echo "🛑 Stopping network monitoring..."
         sudo kill "$TCPDUMP_PID"
-    fi
-
-    if [[ -n "$DASHBOARD_PID" ]]; then
-        echo "Stopping dashboard..."
-        kill "$DASHBOARD_PID"
     fi
 }
 
+# Function placeholder for AI threat detection
 ai_threat_detection() {
-    # Placeholder for future AI logic
+    # Future enhancement: Integrate with TensorFlow/Sklearn
     :
 }
 
-# === TRAP CLEANUP ===
-trap stop_all EXIT
-
-# === MAIN EXECUTION ===
-
+# Main routine
 echo "💡 CenSecure IoT Security Gateway is starting..."
-echo "🧠 Using network interface: $NETWORK_INTERFACE"
 enable_firewall
 monitor_traffic
 start_dashboard
 
+# Trap EXIT to stop tcpdump
+trap stop_monitoring EXIT
+
+# Monitoring Loop
 while true; do
     analyze_logs
     check_open_ports
