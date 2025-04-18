@@ -19,8 +19,12 @@ mkdir -p "$LOG_DIR"
 # Function to monitor network traffic and save to a log file
 monitor_traffic() {
     echo "🔍 Monitoring network traffic on $NETWORK_INTERFACE..."
+    
+    # Ensure log file exists with correct permissions
     sudo touch "$LOG_FILE"
     sudo chown $(whoami):$(whoami) "$LOG_FILE"
+
+    # Start tcpdump with proper privileges
     sudo tcpdump -i "$NETWORK_INTERFACE" -n -w "$LOG_FILE" &
     TCPDUMP_PID=$!
 }
@@ -35,10 +39,12 @@ check_open_ports() {
 analyze_logs() {
     echo "🧠 Analyzing logs for suspicious activity..."
 
+    # Check for failed SSH logins
     if grep -q "Failed password" /var/log/auth.log; then
         echo "🚨 Potential SSH intrusion detected!" | mail -s "CenSecure Alert: SSH Intrusion" "$ALERT_EMAIL"
     fi
 
+    # Dummy pattern match for suspicious traffic
     if grep -q "SuspiciousPattern" "$LOG_FILE" 2>/dev/null; then
         echo "🚨 Suspicious network traffic detected!" | mail -s "CenSecure Alert: Network Traffic" "$ALERT_EMAIL"
     fi
